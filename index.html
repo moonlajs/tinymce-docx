@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>HTML-DOCX test</title>
+  
+  <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
+  <script src="FileSaver.js"></script>
+  <script src="html-docx.js"></script>
+</head>
+<body>
+  <p>Enter/paste your document here:</p>
+  <textarea id="content" cols="60" rows="10">
+    <p>We all live in a yellow submarine, yellow submarine, yellow submarine, yellow submarine</p>
+    <p>Images can also be exported if you source them as base64 DATA URI.</p>
+        <img src="cat.jpg">
+<h2 style="text-align: center;">Welcome to the TinyMCE Cloud demo!</h2>
+  <p>Please try out the features provided in this full featured example (excluding <a href="https://www.tiny.cloud/apps/">Premium Plugins</a> ).</p>
+
+  <h2>Got questions or need help?</h2>
+  <ul>
+    <li>Our <a class="mceNonEditable" href="//www.tiny.cloud/docs/">documentation</a> is a great resource for learning how to configure TinyMCE.</li>
+    <li>Have a specific question? Try the <a href="https://stackoverflow.com/questions/tagged/tinymce" target="_blank" rel="noopener"><code>tinymce</code> tag at Stack Overflow</a>.</li>
+    <li>We also offer enterprise grade support as part of <a href="https://www.tiny.cloud/pricing">TinyMCE premium plans</a>.</li>
+  </ul>
+
+  <h2>A simple table to play with</h2>
+  <table style="border-collapse: collapse; width: 100%;" border="1">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Cost</th>
+        <th>Really?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>TinyMCE Cloud</td>
+        <td>Get started for free</td>
+        <td>YES!</td>
+      </tr>
+      <tr>
+        <td>Plupload</td>
+        <td>Free</td>
+        <td>YES!</td>
+      </tr>
+    </tbody>
+  </table>
+  </textarea>
+  <div class="page-orientation">
+    <span>Page orientation:</span>
+    <label><input type="radio" name="orientation" value="portrait" checked>Portrait</label>
+    <label><input type="radio" name="orientation" value="landscape">Landscape</label>
+  </div>
+  <button id="convert">Convert</button>
+  <div id="download-area"></div>
+
+  <script>
+    tinymce.init({
+      selector: '#content',
+      plugins: [
+        "advlist autolink lists link image charmap print preview anchor",
+        "searchreplace visualblocks code fullscreen fullpage",
+        "insertdatetime media table contextmenu paste"
+      ],
+      toolbar: "insertfile undo redo | styleselect | bold italic | " +
+        "alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | " +
+        "link image"
+    });
+    document.getElementById('convert').addEventListener('click', function(e) {
+      e.preventDefault();
+      convertImagesToBase64()
+      // for demo purposes only we are using below workaround with getDoc() and manual
+      // HTML string preparation instead of simple calling the .getContent(). Becasue
+      // .getContent() returns HTML string of the original document and not a modified
+      // one whereas getDoc() returns realtime document - exactly what we need.
+      var contentDocument = tinymce.get('content').getDoc();
+      var content = '<!DOCTYPE html>' + contentDocument.documentElement.outerHTML;
+      var orientation = document.querySelector('.page-orientation input:checked').value;
+      var converted = htmlDocx.asBlob(content, {orientation: orientation});
+
+      saveAs(converted, 'doc.docx');
+
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(converted);
+      link.download = 'document.docx';
+      link.appendChild(
+        document.createTextNode('Click here if your download has not started automatically'));
+      var downloadArea = document.getElementById('download-area');
+      downloadArea.innerHTML = '';
+      downloadArea.appendChild(link);
+    });
+
+    function convertImagesToBase64 () {
+      contentDocument = tinymce.get('content').getDoc();
+      var regularImages = contentDocument.querySelectorAll("img");
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+      [].forEach.call(regularImages, function (imgElement) {
+        // preparing canvas for drawing
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = imgElement.width;
+        canvas.height = imgElement.height;
+
+        ctx.drawImage(imgElement, 0, 0);
+        // by default toDataURL() produces png image, but you can also export to jpeg
+        // checkout function's documentation for more details
+		// Uncaught SecurityError: Failed to execute 'toDataURL' on 'HTMLCanvasElement': Tainted canvases may not be exported.
+//如果想使用toDataURL()生成图片文件的话，在canvas绘图过程中使用的图片应该是当前域下的。
+        var dataURL = canvas.toDataURL();
+        imgElement.setAttribute('src', dataURL);
+      })
+      canvas.remove();
+    }
+  </script>
+</body>
+</html>
